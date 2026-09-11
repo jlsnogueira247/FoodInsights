@@ -6,6 +6,15 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from groq import Groq
 
+load_dotenv()
+
+supabase_url = os.getenv("SUPABASE_DATABASE_URL")
+
+if not supabase_url:
+    st.error("SUPABASE_DATABASE_URL não encontrada no arquivo .env.")
+    st.stop()
+
+engine = create_engine(supabase_url)
 
 st.set_page_config(
     page_title="FoodInsights",
