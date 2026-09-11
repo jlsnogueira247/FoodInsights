@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from groq import Groq
 
 
 st.set_page_config(
@@ -14,6 +15,13 @@ st.set_page_config(
 
 
 load_dotenv()
+
+groq_api_key = os.getenv("GROQ_API_KEY")
+
+if not groq_api_key:
+    st.warning("Chave da API de IA não configurada.")
+
+client = Groq(api_key=groq_api_key)
 
 db_user = os.getenv("DB_USER")
 db_password = os.getenv("DB_PASSWORD")
@@ -135,3 +143,61 @@ tempo_cidade = (
 )
 
 st.bar_chart(tempo_cidade)
+
+st.divider()
+
+st.subheader("✨ Insights com Inteligência Artificial")
+
+if st.button("✨ Gerar insights com IA"):
+
+    resumo_dados = f"""
+    Total de pedidos: {total_pedidos}
+    Faturamento: R$ {faturamento:.2f}
+    Ticket médio: R$ {ticket_medio:.2f}
+    Tempo médio de entrega: {tempo_medio:.2f} minutos
+    Taxa de cancelamento: {taxa_cancelamento:.2f}%
+
+    Faturamento por categoria:
+    {faturamento_categoria.to_string()}
+
+    Pedidos por cidade:
+    {pedidos_cidade.to_string()}
+
+    Tempo médio de entrega por cidade:
+    {tempo_cidade.to_string()}
+    """
+
+    prompt = f"""
+    Você é um analista de dados especializado em delivery.
+
+    Analise os indicadores abaixo e gere insights objetivos
+    para apoiar decisões de negócio.
+
+    Identifique:
+    1. Principais pontos positivos.
+    2. Possíveis problemas ou pontos de atenção.
+    3. Tendências relevantes.
+    4. Duas sugestões práticas de melhoria.
+
+    Não invente informações que não estejam presentes nos dados.
+
+    Dados:
+    {resumo_dados}
+    """
+
+    with st.spinner("Analisando os dados..."):
+
+        resposta = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.3,
+        )
+
+    insight = resposta.choices[0].message.content
+
+    st.markdown(insight)
