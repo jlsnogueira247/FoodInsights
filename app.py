@@ -6,15 +6,6 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from groq import Groq
 
-load_dotenv()
-
-supabase_url = os.getenv("SUPABASE_DATABASE_URL")
-
-if not supabase_url:
-    st.error("SUPABASE_DATABASE_URL não encontrada no arquivo .env.")
-    st.stop()
-
-engine = create_engine(supabase_url)
 
 st.set_page_config(
     page_title="FoodInsights",
@@ -25,24 +16,30 @@ st.set_page_config(
 
 load_dotenv()
 
-groq_api_key = os.getenv("GROQ_API_KEY")
+try:
+    supabase_url = st.secrets["SUPABASE_DATABASE_URL"]
+    groq_api_key = st.secrets["GROQ_API_KEY"]
+
+except Exception:
+    supabase_url = os.getenv("SUPABASE_DATABASE_URL")
+    groq_api_key = os.getenv("GROQ_API_KEY")
+
+
+if not supabase_url:
+    st.error("Conexão com o banco de dados não configurada.")
+    st.stop()
 
 if not groq_api_key:
-    st.warning("Chave da API de IA não configurada.")
-
-client = Groq(api_key=groq_api_key)
-
-db_user = os.getenv("DB_USER")
-db_password = os.getenv("DB_PASSWORD")
-db_host = os.getenv("DB_HOST")
-db_port = os.getenv("DB_PORT")
-db_name = os.getenv("DB_NAME")
+    st.error("Chave da API de IA não configurada.")
+    st.stop()
 
 
 engine = create_engine(
-    f"postgresql+psycopg2://{db_user}:{db_password}@"
-    f"{db_host}:{db_port}/{db_name}"
+    supabase_url,
+    connect_args={"sslmode": "require"}
 )
+
+client = Groq(api_key=groq_api_key)
 
 
 st.title("FoodInsights 🍔🥗🍖")
@@ -84,16 +81,17 @@ df_filtrado = df[
     & df["status"].isin(status)
 ]
 
-
 total_pedidos = len(df_filtrado)
+
 faturamento = df_filtrado["valor_pedido"].sum()
+
 ticket_medio = df_filtrado["valor_pedido"].mean()
+
 tempo_medio = df_filtrado["tempo_entrega_min"].mean()
 
 taxa_cancelamento = (
     (df_filtrado["status"] == "Cancelado").mean() * 100
 )
-
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -136,12 +134,12 @@ faturamento_categoria = (
 
 st.bar_chart(faturamento_categoria)
 
-
 st.subheader("📍 Pedidos por cidade")
 
 pedidos_cidade = df_filtrado["cidade"].value_counts()
 
 st.bar_chart(pedidos_cidade)
+
 
 st.subheader("🛵 Tempo médio de entrega por cidade")
 
@@ -153,7 +151,9 @@ tempo_cidade = (
 
 st.bar_chart(tempo_cidade)
 
+
 st.divider()
+
 
 st.subheader("✨ Insights com Inteligência Artificial")
 
